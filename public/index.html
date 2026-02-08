@@ -232,7 +232,6 @@
             }
         });
 
-        // Drag and drop functionality
         const label = document.querySelector('.file-input-label');
         
         ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
@@ -274,7 +273,6 @@
             fileInput.dispatchEvent(event);
         }
 
-        // Form submission to summarize
         form.addEventListener('submit', async function(e) {
             e.preventDefault();
 
