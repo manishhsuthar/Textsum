@@ -189,18 +189,17 @@
             </div>
             
             <div class="file-info" id="fileInfo"></div>
+            <div class="file-info" id="summaryBox"></div>
             
             <button type="submit" class="upload-btn">
-                <span>Upload File</span>
+                <span>Upload & Summarize</span>
             </button>
             
             <div class="progress-bar" id="progressBar">
                 <div class="progress-fill" id="progressFill"></div>
             </div>
             
-            <div class="success-message" id="successMessage">
-                ✅ File uploaded successfully!
-            </div>
+            <div class="success-message" id="successMessage"></div>
         </form>
     </div>
 
@@ -213,6 +212,7 @@
         const progressFill = document.getElementById('progressFill');
         const successMessage = document.getElementById('successMessage');
         const form = document.querySelector('.upload-form');
+        const summaryBox = document.getElementById('summaryBox');
 
         fileInput.addEventListener('change', function() {
             const file = this.files[0];
@@ -224,6 +224,8 @@
                     <strong>Type:</strong> ${file.type || 'text/plain'}
                 `;
                 fileInfo.style.display = 'block';
+                summaryBox.style.display = 'none';
+                successMessage.style.display = 'none';
                 labelText.textContent = '✓ File selected - Choose another or upload';
                 uploadBtn.style.background = '#2e7d32';
                 uploadBtn.style.borderColor = '#2e7d32';
@@ -272,37 +274,60 @@
             fileInput.dispatchEvent(event);
         }
 
-        // Form submission with progress animation
-        form.addEventListener('submit', function(e) {
-            e.preventDefault(); // Prevent default form submission for demo
-            
-            if (fileInput.files.length > 0) {
-                const file = fileInput.files[0];
-                
-                progressBar.style.display = 'block';
-                uploadBtn.disabled = true;
-                uploadBtn.innerHTML = '<span>Uploading...</span>';
-                
-                // Store file details for success page
-                sessionStorage.setItem('uploadedFileName', file.name);
-                sessionStorage.setItem('uploadedFileSize', (file.size / 1024).toFixed(2) + ' KB');
-                sessionStorage.setItem('uploadedFileType', file.type || 'text/plain');
-                sessionStorage.setItem('uploadTime', new Date().toLocaleString());
-                
-                // Simulate progress
-                let progress = 0;
-                const interval = setInterval(() => {
-                    progress += Math.random() * 15;
-                    if (progress > 100) {
-                        progress = 100;
-                        clearInterval(interval);
-                        setTimeout(() => {
-                            // Redirect to success page
-                            window.location.href = 'upload-success.html';
-                        }, 500);
-                    }
-                    progressFill.style.width = progress + '%';
-                }, 200);
+        // Form submission to summarize
+        form.addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            if (fileInput.files.length === 0) return;
+
+            progressBar.style.display = 'block';
+            progressFill.style.width = '15%';
+            uploadBtn.disabled = true;
+            uploadBtn.innerHTML = '<span>Summarizing...</span>';
+            successMessage.style.display = 'none';
+            summaryBox.style.display = 'none';
+
+            try {
+                const formData = new FormData(form);
+                const res = await fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                progressFill.style.width = '75%';
+
+                const contentType = res.headers.get('content-type') || '';
+                let data = null;
+                if (contentType.includes('application/json')) {
+                    data = await res.json();
+                } else {
+                    const text = await res.text();
+                    throw new Error(text || 'Upload failed');
+                }
+
+                if (!res.ok) {
+                    throw new Error((data && data.error) || 'Upload failed');
+                }
+
+                progressFill.style.width = '100%';
+                summaryBox.innerHTML = `
+                    <strong>Summary:</strong><br>
+                    ${data.summary}
+                `;
+                summaryBox.style.display = 'block';
+
+                successMessage.textContent = 'Summary ready.';
+                successMessage.style.display = 'block';
+            } catch (err) {
+                successMessage.textContent = err.message;
+                successMessage.style.display = 'block';
+            } finally {
+                uploadBtn.disabled = false;
+                uploadBtn.innerHTML = '<span>Upload & Summarize</span>';
+                setTimeout(() => {
+                    progressBar.style.display = 'none';
+                    progressFill.style.width = '0%';
+                }, 500);
             }
         });
     </script>
